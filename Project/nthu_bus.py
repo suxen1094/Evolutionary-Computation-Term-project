@@ -7,7 +7,8 @@ GENERAION_NUM = 500
 STATION_NUM = 10        # The number of vertices
 VELOCITY = 8            # Unit: m / second
 VEHICLE_NUM = 3         # Number of vehicles
-PARKING_TIME = 200      # Unit: second
+GETOFF_TIME = 5         # Unit: second
+PARKING_TIME = 20
 BUS_INTERVAL = 120      
 INF = 99999
 INITIAL_TIME = 0
@@ -24,7 +25,7 @@ RED_ROUTE   = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 # It means there's only 1 vehicle => parking time will be very large
 
 # Balancing the weights between "parking time" and "customer not satisfied" is important 
-class unlimited_population:
+class unlimited_individual:
     def __init__(self):
         self.delivery = [0 for i in range(VEHICLE_NUM * STATION_NUM)]
         # Initially random when created
@@ -62,7 +63,32 @@ class unlimited_population:
 
         self.weight = self.total_time * time_weight + c
         return self.weight
-        
+
+    # # Type 1: unload time is constant
+    # def calculate_time(self):
+    #     # Calculate time - if there's a station need to serve, then add the parking time
+    #     self.time = [i * BUS_INTERVAL for i in range(VEHICLE_NUM)]
+    #     for i in range(VEHICLE_NUM):
+    #         current_delivery = self.delivery[i * VEHICLE_NUM:i * VEHICLE_NUM + STATION_NUM]
+    #         for d in current_delivery:
+    #             if d != 0:
+    #                 self.time[i] += PARKING_TIME
+    #         self.time[i] += DRIVING_TIME
+    #     return
+
+    # # Type 2: unload time is variables
+    # def calculate_time(self):
+    #     # Calculate time - if there's a station need to serve, then add the parking time
+    #     self.time = [i * BUS_INTERVAL for i in range(VEHICLE_NUM)]
+    #     for i in range(VEHICLE_NUM):
+    #         current_delivery = self.delivery[i * VEHICLE_NUM:i * VEHICLE_NUM + STATION_NUM]
+    #         for d in current_delivery:
+    #             if d != 0:
+    #                 self.time[i] += d * GETOFF_TIME
+    #         self.time[i] += DRIVING_TIME
+    #     return
+    
+    # Type 3: unload time are variables + constant
     def calculate_time(self):
         # Calculate time - if there's a station need to serve, then add the parking time
         self.time = [i * BUS_INTERVAL for i in range(VEHICLE_NUM)]
@@ -71,6 +97,7 @@ class unlimited_population:
             for d in current_delivery:
                 if d != 0:
                     self.time[i] += PARKING_TIME
+                    self.time[i] += d * GETOFF_TIME
             self.time[i] += DRIVING_TIME
         return
 
@@ -140,7 +167,7 @@ class unlimited_capacity_GA:
         self.population = []
         self.generation_num = generation_num
         for i in range(pop_size):
-            c = unlimited_population()
+            c = unlimited_individual()
             self.population.append(c)
 
         print("Successfully create GA with unlimited capacity")
@@ -164,8 +191,8 @@ class unlimited_capacity_GA:
 
     # Uniform crossover: Preventing premature convergence 
     def crossover(self, p1, p2):
-        child1 = unlimited_population()
-        child2 = unlimited_population()
+        child1 = unlimited_individual()
+        child2 = unlimited_individual()
         
         for i in range(len(p1.delivery)):
             possibility = random.random()
@@ -182,8 +209,8 @@ class unlimited_capacity_GA:
     # # 2-point crossover 
     # def crossover(self, p1, p2):
     #     possibility = random.random()
-    #     child1 = unlimited_population()
-    #     child2 = unlimited_population()
+    #     child1 = unlimited_individual()
+    #     child2 = unlimited_individual()
 
     #     if possibility < self.cr:   # Do crossover
     #         index1 = 0
@@ -272,7 +299,7 @@ class unlimited_capacity_GA:
         return new_population
 
     def find_best(self, target_population):
-        target_population.sort(key=unlimited_population.fitness_function)
+        target_population.sort(key=unlimited_individual.fitness_function)
         return target_population[0]
     
     def evolution(self):
