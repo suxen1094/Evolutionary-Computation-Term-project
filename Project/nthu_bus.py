@@ -63,30 +63,6 @@ class unlimited_individual:
 
         self.weight = self.total_time * time_weight + c
         return self.weight
-
-    # # Type 1: unload time is constant
-    # def calculate_time(self):
-    #     # Calculate time - if there's a station need to serve, then add the parking time
-    #     self.time = [i * BUS_INTERVAL for i in range(VEHICLE_NUM)]
-    #     for i in range(VEHICLE_NUM):
-    #         current_delivery = self.delivery[i * VEHICLE_NUM:i * VEHICLE_NUM + STATION_NUM]
-    #         for d in current_delivery:
-    #             if d != 0:
-    #                 self.time[i] += PARKING_TIME
-    #         self.time[i] += DRIVING_TIME
-    #     return
-
-    # # Type 2: unload time is variables
-    # def calculate_time(self):
-    #     # Calculate time - if there's a station need to serve, then add the parking time
-    #     self.time = [i * BUS_INTERVAL for i in range(VEHICLE_NUM)]
-    #     for i in range(VEHICLE_NUM):
-    #         current_delivery = self.delivery[i * VEHICLE_NUM:i * VEHICLE_NUM + STATION_NUM]
-    #         for d in current_delivery:
-    #             if d != 0:
-    #                 self.time[i] += d * GETOFF_TIME
-    #         self.time[i] += DRIVING_TIME
-    #     return
     
     # Type 3: unload time are variables + constant
     def calculate_time(self):
