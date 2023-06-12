@@ -1,0 +1,71 @@
+Global minimum:
+--------------------
+Printing all vehicle's status:
+
+Vehicle 1:
+Time spent: 2008.75 s
+Passengers go to station   1: 0
+Passengers go to station   2: 4
+Passengers go to station   3: 23
+Passengers go to station   4: 126
+Passengers go to station   5: 68
+Passengers go to station   6: 11
+Passengers go to station   7: 0
+Passengers go to station   8: 10
+Passengers go to station   9: 19
+Passengers go to station  10: 24
+
+Vehicle 2:
+Time spent: 2003.75 s
+Passengers go to station   1: 0
+Passengers go to station   2: 3
+Passengers go to station   3: 0
+Passengers go to station   4: 122
+Passengers go to station   5: 5
+Passengers go to station   6: 6
+Passengers go to station   7: 2
+Passengers go to station   8: 10
+Passengers go to station   9: 57
+Passengers go to station  10: 19
+
+Vehicle 3:
+Time spent: 1188.75 s
+Passengers go to station   1: 0
+Passengers go to station   2: 0
+Passengers go to station   3: 0
+Passengers go to station   4: 1
+Passengers go to station   5: 6
+Passengers go to station   6: 0
+Passengers go to station   7: 0
+Passengers go to station   8: 0
+Passengers go to station   9: 5
+Passengers go to station  10: 5
+
+Vehicle 4:
+Time spent: 1628.75 s
+Passengers go to station   1: 0
+Passengers go to station   2: 3
+Passengers go to station   3: 0
+Passengers go to station   4: 1
+Passengers go to station   5: 12
+Passengers go to station   6: 0
+Passengers go to station   7: 0
+Passengers go to station   8: 0
+Passengers go to station   9: 23
+Passengers go to station  10: 2
+
+--------------------
+--------------------
+Total time spent: 2008.75 s
+Passengers go to station  1: 0
+Passengers go to station  2: 10
+Passengers go to station  3: 23
+Passengers go to station  4: 250
+Passengers go to station  5: 91
+Passengers go to station  6: 17
+Passengers go to station  7: 2
+Passengers go to station  8: 20
+Passengers go to station  9: 104
+Passengers go to station 10: 50
+Weights: 2008.75
+--------------------

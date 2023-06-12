@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 GENERAION_NUM = 500
 STATION_NUM = 10        # The number of vertices
 VELOCITY = 8            # Unit: m / second
-VEHICLE_NUM = 3         # Number of vehicles
+VEHICLE_NUM = 4         # Number of vehicles
 GETOFF_TIME = 5         # Unit: second
 PARKING_TIME = 20
-BUS_INTERVAL = 120      
+BUS_INTERVAL = 300      
 INF = 99999
 INITIAL_TIME = 0
 DEMAND = [0, 10, 23, 250, 91, 17, 2, 20, 104, 50]  # The demand of each station
@@ -29,7 +29,7 @@ class unlimited_individual:
     def __init__(self):
         self.delivery = [0 for i in range(VEHICLE_NUM * STATION_NUM)]
         # Initially random when created
-        self.rand_deliver()
+        self.rand_deliver_constraints()
 
         # Assume the interval between every bus start = {BUS_INTERVAL}
         self.time = [i * BUS_INTERVAL for i in range(VEHICLE_NUM)]
@@ -44,8 +44,8 @@ class unlimited_individual:
     def fitness_function(self):
         # Define the weight of time and customer not-satisfied and customer over satisfied
         time_weight = 1
-        customer_not_satisfy_weight = 100
-        customer_over_satisfy_weight = 100
+        customer_not_satisfy_weight = 2000
+        customer_over_satisfy_weight = 2000
 
         c = 0
         
@@ -64,20 +64,31 @@ class unlimited_individual:
         self.weight = self.total_time * time_weight + c
         return self.weight
     
-    # Type 3: unload time are variables + constant
+    # Unload time are variables + constant
     def calculate_time(self):
         # Calculate time - if there's a station need to serve, then add the parking time
         self.time = [i * BUS_INTERVAL for i in range(VEHICLE_NUM)]
         for i in range(VEHICLE_NUM):
-            current_delivery = self.delivery[i * VEHICLE_NUM:i * VEHICLE_NUM + STATION_NUM]
+            current_delivery = self.delivery[i * STATION_NUM:i * STATION_NUM + STATION_NUM]
+            
             for d in current_delivery:
                 if d != 0:
                     self.time[i] += PARKING_TIME
                     self.time[i] += d * GETOFF_TIME
+            global DRIVING_TIME
             self.time[i] += DRIVING_TIME
+            
         return
 
-    def rand_deliver(self):
+    def rand_deliver_nonconstraints(self):
+        # During randoming, make sure that total_delivery should not exceed the demand
+        current_demand = copy.deepcopy(DEMAND)
+        for i in range(VEHICLE_NUM):
+            for j in range(STATION_NUM):
+                self.delivery[i * STATION_NUM + j] = random.randint(0, current_demand[j])
+        return
+
+    def rand_deliver_constraints(self):
         # During randoming, make sure that total_delivery should not exceed the demand
         current_demand = copy.deepcopy(DEMAND)
         for i in range(VEHICLE_NUM):
@@ -102,7 +113,7 @@ class unlimited_individual:
         print('-'*20)
         print("Printing all vehicle's status:\n")
         for i in range(VEHICLE_NUM):
-            print(f'Vehicle {i}:')
+            print(f'Vehicle {i+1}:')
             print(f'Time spent: {self.time[i]} s')
             print(f'Passengers go to station   1: {self.delivery[i * STATION_NUM + 0]}')
             print(f'Passengers go to station   2: {self.delivery[i * STATION_NUM + 1]}')
@@ -133,9 +144,9 @@ class unlimited_individual:
         print(f'Weights: {self.weight}')
         print('-'*20)
 
-class unlimited_capacity_GA:
+class unlimited_capacity_GA1:
     # Integer representation
-    def __init__(self, pop_size = 100, cr = 0.4, mr = 0.1, n = 2, generation_num = GENERAION_NUM):
+    def __init__(self, pop_size = 100, cr = 0.8, mr = 0.1, n = 2, generation_num = GENERAION_NUM):
         self.n = n
         self.pop_size = pop_size
         self.cr = cr
@@ -165,6 +176,36 @@ class unlimited_capacity_GA:
 
         return new_parent
 
+    # # Uniform crossover: Preventing premature convergence 
+    # def crossover(self, p1, p2):
+    #     child1 = unlimited_individual()
+    #     child2 = unlimited_individual()
+        
+    #     possibility = random.random()
+    #     if possibility < self.cr:   # Do crossover
+    #         vehicle_index = [k for k in range(VEHICLE_NUM)]
+    #         random.shuffle(vehicle_index)
+    #         for j in range(STATION_NUM):
+
+    #             child1.delivery[vehicle_index[0] * STATION_NUM + j] = p2.delivery[vehicle_index[1] * STATION_NUM + j]
+    #             child1.delivery[vehicle_index[1] * STATION_NUM + j] = p2.delivery[vehicle_index[0] * STATION_NUM + j]
+    #             child1.delivery[vehicle_index[2] * STATION_NUM + j] = p2.delivery[vehicle_index[3] * STATION_NUM + j]
+    #             child1.delivery[vehicle_index[3] * STATION_NUM + j] = p2.delivery[vehicle_index[2] * STATION_NUM + j]
+                
+    #             child2.delivery[vehicle_index[0] * STATION_NUM + j] = p1.delivery[vehicle_index[1] * STATION_NUM + j]
+    #             child2.delivery[vehicle_index[1] * STATION_NUM + j] = p1.delivery[vehicle_index[0] * STATION_NUM + j]
+    #             child2.delivery[vehicle_index[2] * STATION_NUM + j] = p1.delivery[vehicle_index[3] * STATION_NUM + j]
+    #             child2.delivery[vehicle_index[3] * STATION_NUM + j] = p1.delivery[vehicle_index[2] * STATION_NUM + j]
+
+    #     else:                       # Do nothing
+    #         child1.delivery[i] = p1.delivery[i]
+    #         child2.delivery[i] = p2.delivery[i]
+        
+    #     # Update the weight and time spent
+    #     child1.weight = child1.fitness_function()
+    #     child2.weight = child2.fitness_function()
+    #     return (child1, child2)
+
     # Uniform crossover: Preventing premature convergence 
     def crossover(self, p1, p2):
         child1 = unlimited_individual()
@@ -180,40 +221,30 @@ class unlimited_capacity_GA:
                 child1.delivery[i] = p1.delivery[i]
                 child2.delivery[i] = p2.delivery[i]
         
+        # Update the weight and time spent
+        child1.weight = child1.fitness_function()
+        child2.weight = child2.fitness_function()
         return (child1, child2)
 
-    # # 2-point crossover 
-    # def crossover(self, p1, p2):
-    #     possibility = random.random()
-    #     child1 = unlimited_individual()
-    #     child2 = unlimited_individual()
-
-    #     if possibility < self.cr:   # Do crossover
-    #         index1 = 0
-    #         index2 = 1
-
-    #         # Create two indices that divide the Make sure index1 is always < index2
-    #         while(index1 >= index2):
-    #             index1 = random.randint(0, len(p1.delivery) - 1)
-    #             index2 = random.randint(0, len(p1.delivery) - 1)
-            
-    #         for i in range(len(p1.delivery)):
-    #             if i >= index1 and i <= index2:
-    #                 child1.delivery[i] = p2.delivery[i]
-    #                 child2.delivery[i] = p1.delivery[i]
-    #             else:
-    #                 child1.delivery[i] = p1.delivery[i]
-    #                 child2.delivery[i] = p2.delivery[i]
-
-    #     else:                       # Do nothing
-    #         for i in range(len(p1.delivery)):
-    #             child1.delivery[i] = p1.delivery[i]
-    #             child2.delivery[i] = p2.delivery[i]
+    # Random resetting mutation
+    def reset_mutation(self, p):
+        possibility = random.random()
+        for i in range(len(p.delivery)):
+            # Do mutation
+            if possibility < self.mr:
+                lower_bound = 0
+                upper_bound = DEMAND[i % STATION_NUM]
+                
+                p.delivery[i] = random.randint(lower_bound, upper_bound)
+            else:   # Do nothing
+                pass
         
-    #     return (child1, child2)
+        # Update the weight and time
+        p.weight = p.fitness_function()
+        return
 
     # Creep mutation -> Ranging +- 20 and should not exceed the maximum demand and 0
-    def mutation(self, p):
+    def creep_mutation(self, p):
         possibility = random.random()
         for i in range(len(p.delivery)):
             # Do mutation
@@ -231,30 +262,9 @@ class unlimited_capacity_GA:
             else:   # Do nothing
                 pass
         
+        # Update the weight and time
+        p.weight = p.fitness_function()
         return
-
-    # # Also tournament selection, and use (lambda + mu)
-    # def survivor_select(self):
-    #     new_population = []
-
-    #     compatitor = []
-    #     for i in range(self.pop_size):
-    #         compatitor.append(self.population[i])
-    #         compatitor.append(self.offsprings[i])
-
-    #     # Find {pop_size} number of offsprings
-    #     for i in range(self.pop_size):
-    #         picked_population = []
-    #         k = list(range(0, self.pop_size * 2))
-    #         random.shuffle(k)
-    #         for i in range(self.n):
-    #             index = k[i]
-    #             picked_population.append(compatitor[index])
-
-    #         best_offspring = self.find_best(picked_population)
-    #         new_population.append(best_offspring)
-
-    #     return new_population
 
     # Also tournament selection, and use (lambda, mu)
     def survivor_select(self):
@@ -307,22 +317,228 @@ class unlimited_capacity_GA:
 
             # Mutation
             for j in range(len(self.offsprings)):
-                self.mutation(self.offsprings[j])
+                self.creep_mutation(self.offsprings[j])
 
             # Survivor selection
             self.population = self.survivor_select()
-            self.global_min = self.find_best(self.population)
+            self.local_min = self.find_best(self.population)
 
-            # print(f"Current generation: {i+1}")
-            # self.global_min.print_total()
+            # Global min: the global minimum during the 500 generation
+            # Local min: the minimum value at each generation
+            # All global min: the global minimum among all 30 runs
 
             global aver_GA_weight, aver_GA_time
-            aver_GA_weight[i] += self.global_min.weight
-            aver_GA_time[i] += self.global_min.total_time
+            aver_GA_weight[i] += self.local_min.weight
+            aver_GA_time[i] += self.local_min.total_time
 
+            if self.global_min.weight > self.local_min.weight:
+                self.global_min = copy.deepcopy(self.local_min)
+
+        print("Global minimum:")
         self.global_min.print_all()
         self.global_min.print_total()
+
+        global all_global_min
+        if all_global_min.weight > self.global_min.weight:
+            all_global_min = copy.deepcopy(self.global_min)
+
+class unlimited_capacity_GA2:
+    # Integer representation
+    def __init__(self, pop_size = 100, cr = 0.8, mr = 0.1, n = 2, generation_num = GENERAION_NUM):
+        self.n = n
+        self.pop_size = pop_size
+        self.cr = cr
+        self.mr = mr
+        self.population = []
+        self.generation_num = generation_num
+        for i in range(pop_size):
+            c = unlimited_individual()
+            self.population.append(c)
+
+        print("Successfully create GA with unlimited capacity")
+
+    def parent_select(self):
+        new_parent = []
+
+        # Find pop_size number of parents
+        for i in range(self.pop_size):
+            picked_parent = []
+            k = list(range(0, self.pop_size))
+            random.shuffle(k)
+            for i in range(self.n):
+                index = k[i]
+                picked_parent.append(self.population[index])
+
+            best_parent = self.find_best(picked_parent)
+            new_parent.append(best_parent)
+
+        return new_parent
+
+    # Uniform crossover: Preventing premature convergence 
+    def crossover(self, p1, p2):
+        child1 = unlimited_individual()
+        child2 = unlimited_individual()
         
+        possibility = random.random()
+        if possibility < self.cr:   # Do crossover
+            vehicle_index = [k for k in range(VEHICLE_NUM)]
+            random.shuffle(vehicle_index)
+            for j in range(STATION_NUM):
+                child1.delivery[vehicle_index[0] * STATION_NUM + j] = p2.delivery[vehicle_index[1] * STATION_NUM + j]
+                child1.delivery[vehicle_index[1] * STATION_NUM + j] = p2.delivery[vehicle_index[0] * STATION_NUM + j]
+                child1.delivery[vehicle_index[2] * STATION_NUM + j] = p2.delivery[vehicle_index[3] * STATION_NUM + j]
+                child1.delivery[vehicle_index[3] * STATION_NUM + j] = p2.delivery[vehicle_index[2] * STATION_NUM + j]
+                
+                child2.delivery[vehicle_index[0] * STATION_NUM + j] = p1.delivery[vehicle_index[1] * STATION_NUM + j]
+                child2.delivery[vehicle_index[1] * STATION_NUM + j] = p1.delivery[vehicle_index[0] * STATION_NUM + j]
+                child2.delivery[vehicle_index[2] * STATION_NUM + j] = p1.delivery[vehicle_index[3] * STATION_NUM + j]
+                child2.delivery[vehicle_index[3] * STATION_NUM + j] = p1.delivery[vehicle_index[2] * STATION_NUM + j]
+
+        else:                       # Do nothing
+            child1.delivery[i] = p1.delivery[i]
+            child2.delivery[i] = p2.delivery[i]
+        
+        # Update the weight and time spent
+        child1.weight = child1.fitness_function()
+        child2.weight = child2.fitness_function()
+        return (child1, child2)
+
+    # # Uniform crossover: Preventing premature convergence 
+    # def crossover(self, p1, p2):
+    #     child1 = unlimited_individual()
+    #     child2 = unlimited_individual()
+        
+    #     for i in range(len(p1.delivery)):
+    #         possibility = random.random()
+    #         if possibility < self.cr:   # Do crossover
+    #             child1.delivery[i] = p2.delivery[i]
+    #             child2.delivery[i] = p1.delivery[i]
+
+    #         else:                       # Do nothing
+    #             child1.delivery[i] = p1.delivery[i]
+    #             child2.delivery[i] = p2.delivery[i]
+        
+    #     # Update the weight and time spent
+    #     child1.weight = child1.fitness_function()
+    #     child2.weight = child2.fitness_function()
+    #     return (child1, child2)
+
+    # Random resetting mutation
+    def reset_mutation(self, p):
+        possibility = random.random()
+        for i in range(len(p.delivery)):
+            # Do mutation
+            if possibility < self.mr:
+                lower_bound = 0
+                upper_bound = DEMAND[i % STATION_NUM]
+                
+                p.delivery[i] = random.randint(lower_bound, upper_bound)
+            else:   # Do nothing
+                pass
+        
+        # Update the weight and time
+        p.weight = p.fitness_function()
+        return
+
+    # Creep mutation -> Ranging +- 20 and should not exceed the maximum demand and 0
+    def creep_mutation(self, p):
+        possibility = random.random()
+        for i in range(len(p.delivery)):
+            # Do mutation
+            if possibility < self.mr:
+                if (p.delivery[i] - 20) < 0:
+                    lower_bound = 0
+                else:
+                    lower_bound = p.delivery[i] - 20
+                if (p.delivery[i] + 20) > DEMAND[i % STATION_NUM]:
+                    upper_bound = DEMAND[i % STATION_NUM]
+                else:
+                    upper_bound = p.delivery[i] + 20
+                
+                p.delivery[i] = random.randint(lower_bound, upper_bound)
+            else:   # Do nothing
+                pass
+        
+        # Update the weight and time
+        p.weight = p.fitness_function()
+        return
+
+    # Also tournament selection, and use (lambda, mu)
+    def survivor_select(self):
+        new_population = []
+
+        # Find {pop_size} number of offsprings
+        for i in range(self.pop_size):
+            picked_population = []
+            k = list(range(0, self.pop_size))
+            random.shuffle(k)
+            for i in range(self.n):
+                index = k[i]
+                picked_population.append(self.offsprings[index])
+
+            best_offspring = self.find_best(picked_population)
+            new_population.append(best_offspring)
+
+        return new_population
+
+    def find_best(self, target_population):
+        target_population.sort(key=unlimited_individual.fitness_function)
+        return target_population[0]
+    
+    def evolution(self):
+        self.global_min = self.find_best(self.population)
+        print('Start the evolution of binary_GA_uniform_CO')
+
+        # Do {Generation_num} times
+        for i in range(self.generation_num):
+            
+
+            if (i+1) % 150 == 50: 
+                print(f'Running on generation {i+1} ﾍ( ´∀`)ﾉ............')
+            elif (i+1) % 150 == 100: 
+                print(f'Running on generation {i+1} ......ﾍ( ´∀`)ﾉ......')
+            elif (i+1) % 150 == 0: 
+                print(f'Running on generation {i+1} ............ﾍ( ´∀`)ﾉ')
+            elif (i+1) == self.generation_num: print(f'Finish at generation {i+1}.')
+
+
+            self.offsprings = []
+            # Parent selection
+            new_parents = self.parent_select()
+
+            # Crossover
+            for j in range(self.pop_size // 2):
+                child1, child2 = self.crossover(new_parents[j], new_parents[j+1])
+                self.offsprings.append(child1)
+                self.offsprings.append(child2)
+
+            # Mutation
+            for j in range(len(self.offsprings)):
+                self.creep_mutation(self.offsprings[j])
+
+            # Survivor selection
+            self.population = self.survivor_select()
+            self.local_min = self.find_best(self.population)
+
+            # Global min: the global minimum during the 500 generation
+            # Local min: the minimum value at each generation
+            # All global min: the global minimum among all 30 runs
+
+            global aver_GA_weight2, aver_GA_time2
+            aver_GA_weight2[i] += self.local_min.weight
+            aver_GA_time2[i] += self.local_min.total_time
+
+            if self.global_min.weight > self.local_min.weight:
+                self.global_min = copy.deepcopy(self.local_min)
+
+        print("Global minimum:")
+        self.global_min.print_all()
+        self.global_min.print_total()
+
+        global all_global_min2
+        if all_global_min2.weight > self.global_min.weight:
+            all_global_min2 = copy.deepcopy(self.global_min)
+   
 
 DISTANCE_GREEN =   [ 
             [0, 400, INF, INF, INF, INF, INF, INF, INF, INF],
@@ -360,24 +576,16 @@ def floyd_warshall(G):
                     distance[i][j] = min(distance[i][j], distance[i][k] + distance[k][j])
     return distance
 
-
-# Printing the solution
-def print_solution(distance):
-    for i in range(STATION_NUM):
-        for j in range(STATION_NUM):
-            if(distance[i][j] == INF):
-                print(f"  INF", end=" ")
-            else:
-                print(f"{distance[i][j]:>4}", end="  ")
-        print(" ")
-
-
 distance_green = floyd_warshall(DISTANCE_GREEN)
 distance_red = floyd_warshall(DISTANCE_RED)
 DRIVING_TIME = distance_green[0][9] / VELOCITY
 
 aver_GA_weight = [0 for k in range(GENERAION_NUM)]
 aver_GA_time = [0 for k in range(GENERAION_NUM)]
+aver_GA_weight2 = [0 for k in range(GENERAION_NUM)]
+aver_GA_time2 = [0 for k in range(GENERAION_NUM)]
+all_global_min = unlimited_individual()
+all_global_min2 = unlimited_individual()
 aver = 30
 
 def plot_aver_weight():
@@ -389,7 +597,7 @@ def plot_aver_weight():
     generation = [k for k in range(1, GENERAION_NUM+1)]
     label = ["average of GA's fitness"]
     
-    plt.plot(generation, aver_GA_weight, label=label[0])
+    plt.plot(generation, aver_GA_weight2, label=label[0])
     plt.legend(loc='upper right')
     plt.title('Fitness trend, average over 30')
     plt.xlabel('Generation')
@@ -407,7 +615,7 @@ def plot_aver_time():
     generation = [k for k in range(1, GENERAION_NUM+1)]
     label = ["average of GA's time"]
     
-    plt.plot(generation, aver_GA_time, label=label[0])
+    plt.plot(generation, aver_GA_time2, label=label[0])
     plt.legend(loc='upper right')
     plt.title('Time trend, average over 30')
     plt.xlabel('Generation')
@@ -416,15 +624,80 @@ def plot_aver_time():
     # plt.show()
     plt.clf()
 
+def plot_aver_weight_diff():
+    
+    # if 'images' folder doesn't exist then create it
+    if not(os.path.isdir('images')):
+        os.mkdir('images')
+
+    generation = [k for k in range(1, GENERAION_NUM+1)]
+    label = ["average of GA's fitness using uniform crossover directly", "average of GA's fitness using modified uniform crossover"]
+    
+    plt.plot(generation, aver_GA_weight, label=label[0])
+    plt.plot(generation, aver_GA_weight2, label=label[1])
+    plt.legend(loc='upper right')
+    plt.title('Fitness trend, average over 30')
+    plt.xlabel('Generation')
+    plt.ylabel('f(x)')
+    plt.savefig(f'images\Fitness_diff_aver_over_30.jpg')
+    # plt.show()
+    plt.clf()
+
+def plot_aver_time_diff():
+    
+    # if 'images' folder doesn't exist then create it
+    if not(os.path.isdir('images')):
+        os.mkdir('images')
+
+    generation = [k for k in range(1, GENERAION_NUM+1)]
+    label = ["average of GA's fitness using uniform crossover directly", "average of GA's fitness using modified uniform crossover"]
+    
+    plt.plot(generation, aver_GA_time, label=label[0])
+    plt.plot(generation, aver_GA_time2, label=label[1])
+    plt.legend(loc='upper right')
+    plt.title('Time trend, average over 30')
+    plt.xlabel('Generation')
+    plt.ylabel('Time spent')
+    plt.savefig(f'images\Time_diff_aver_over_30.jpg')
+    # plt.show()
+    plt.clf()
+
 if __name__ == "__main__":
+    # for i in range(aver):
+    #     print(f'Current round: Round {i+1}')
+    #     GA1 = unlimited_capacity_GA1()
+    #     GA2 = unlimited_capacity_GA2()
+    #     GA2.evolution()
+    #     GA1.evolution()
+
+    # for i in range(GENERAION_NUM):
+    #     aver_GA_weight[i] /= aver
+    #     aver_GA_time[i] /= aver
+    #     aver_GA_weight2[i] /= aver
+    #     aver_GA_time2[i] /= aver
+
+    # plot_aver_weight_diff()
+    # plot_aver_time_diff()
+    # print('-' * 20)
+    # print('Global minimum:')
+    # all_global_min.print_all()
+    # all_global_min.print_total()
+    # all_global_min2.print_all()
+    # all_global_min2.print_total()
+
     for i in range(aver):
         print(f'Current round: Round {i+1}')
-        GA1 = unlimited_capacity_GA()
-        GA1.evolution()
+        GA2 = unlimited_capacity_GA2()
+        GA2.evolution()
 
     for i in range(GENERAION_NUM):
-        aver_GA_weight[i] /= aver
-        aver_GA_time[i] /= aver
+        aver_GA_weight2[i] /= aver
+        aver_GA_time2[i] /= aver
 
     plot_aver_weight()
     plot_aver_time()
+
+    print('-' * 20)
+    print('Global minimum:')
+    all_global_min2.print_all()
+    all_global_min2.print_total()
